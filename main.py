@@ -1,171 +1,16 @@
 import argparse 
 import re
 
-class Parser:
-    openAndClosedRelationship = {
-        "{": "}",
-        '"': '"',
-        "[" : "]"
-    }
-
-    specialWords = {
+specialWords = {
         "t":"true", 
         "f":"false",
         "n": "null"
     }
-    specialWordsCovertionTable = {
-        "true": True, 
-        "false": False,
-        "null": None
-    }
-    numbers = ["0","1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "e", "E", "-", "^", "/"]
-    plainText = "afsd"
-    symbolTable = []
-    tokens = []
-    parsedDictionary = {}
-
-    def __init__(self, plainText) -> None:
-        self.plainText = plainText.strip()
-        if not ( self.plainText[0] == "{" and self.plainText[len(self.plainText) - 1] == "}"):
-            raise SyntaxError("There is not valid json in this file")
-        
-        self.plainText = self.plainText[1:-1]
-
-        
-
-    def __str__(self) -> str:
-        return f"ParserObjectPlainText: {self.plainText}"
-    
-    def parse(self) -> dict:
-       
-        self.tokens = self.mapTokens(self.plainText)
-        self.mapKeyValueItems()
-
-        return self.parsedDictionary
-    
-    def lookForClosedCharacterIndex(self,text, startIndex ) -> int:
-        openChar = text[startIndex]
-        closedTarget = self.openAndClosedRelationship[openChar]
-        numOpenedChars = 0
-
-        index = startIndex
-        while index != len(text)-1:
-            
-            char = text[index]
-            if char == openChar:
-                numOpenedChars += 1
-            if char == closedTarget:
-               
-                numOpenedChars -= 1
-            
-            if numOpenedChars == 0:
-                return index + 1
-            
-            index +=1 
-
-        raise SyntaxError("Invalid closed character or it does not exist")
-    
-    def lookForStringClosedCharacterIndex(self, text, startIndex)->int:
-        index = startIndex + 1
-        while index != len(text)-1:
-            char = text[index]
-            
-            if char == '"':
-                return index
-            index +=1 
-            
-        raise SyntaxError("Invalid string closed character or it does not exist")
-    
-    def lookForNumberAreaEndIndex(self,text, startIndex) -> int:
-        for index in range(startIndex + 1, len(text)):
-            char = text[index]
-            if not char in self.numbers:
-                return index
-            
-        raise SyntaxError("Invalid number character or there is a problem with the program")
-
-    def parseType(self, value):
-        if value[0] == '"' and value[len(value)-1] == '"':
-            return value[1:-1]
-
-        if value in self.specialWordsCovertionTable.keys():
-            return self.specialWordsCovertionTable[value]
-        
-        if re.fullmatch(r"\d+", value):
-            return int(value)
-        
-        if value[0] == "[" and value[len(value)-1] == ']':
-            value = value[1:-1]
-            arrayTokens = self.mapTokens(value)
-            return list(map(lambda d: self.parseType(d), arrayTokens))
-        
-        if value[0] == "{" and value[len(value)-1] == '}':
-            return Parser(value).parse()
-
-        return value
-
-    def mapKeyValueItems(self)-> None: 
-        index = 0
-        lastIndex = len(self.tokens)
-        while index != lastIndex:
-            token = self.tokens[index]
-            if token == ":":
-                key = self.tokens[index - 1]
-                value = self.tokens[index + 1]
-                self.parsedDictionary[self.parseType(key)] = self.parseType(value)
-
-            index+=1 
-
-
-        return 
-
-
-    def mapTokens(self, text) -> None:
-        index = 0
-        lastIndex = len(text)-1
-        tokens = []
-
-        while index <= lastIndex:
-            char = text[index]
-
-            if char in ['{', "["]:
-                endIndex = self.lookForClosedCharacterIndex(text, index)
-
-                tokens.append(text[index:endIndex])
-
-                index = endIndex
-            elif char == '"':
-                endIndex = self.lookForStringClosedCharacterIndex(text, index)
-                
-                tokens.append(text[index:endIndex+1])
-
-                index = endIndex
-
-            elif char in [ ":", ","]:
-                tokens.append(char)
-            elif char in self.specialWords.keys():
-                specialWord = self.specialWords[char]
-                stimatedEndIndex = index+len(specialWord)
-                if not(specialWord == text[index:stimatedEndIndex]):
-                    raise SyntaxError(f"Invalid Special Word in char with index {index}")
-
-                tokens.append(specialWord)
-                index = stimatedEndIndex-1
-            elif char in self.numbers:
-                endIndex = self.lookForNumberAreaEndIndex(text, index)
-            
-                tokens.append(text[index:endIndex])
-
-                index = endIndex
-
-            index += 1
-
-      
-        return tokens
-
-        
-        
-
+specialWordsCovertionTable = {
+    "true": True, 
+    "false": False,
+    "null": None
+}
 
 def main():
     parser = argparse.ArgumentParser(prog="json parser", description="A json parser");
@@ -178,16 +23,125 @@ def main():
         print("The given file is not in this directory or does not exist")
         return
 
-    data = Parser(jsonFile.read()).parse()
+    data = converTojsonFromText(jsonFile.read())
+
 
     print("Parsed dictionary:", data, sep="\n")
 
 
     jsonFile.close()
 
+def lookForLastIndexOfString(rawText, startIndex):  
+    index = startIndex + 1
+
+    while index <= len(rawText)-1:
+        char = rawText[index]
+        index+=1
+
+        if char == '"':
+            return index
+     
+        
+
+def lookForLastIndexOfNestableToken(rawText, startIndex):
+    openningChar = rawText[startIndex]
+    closingChar =  {'{':'}','[':']'}[openningChar]
+    index = startIndex
+    numOpennedChars = 0
+
+    while index <= len(rawText)-1:
+        char = rawText[index]
+        if char == openningChar:
+            numOpennedChars += 1
+        elif char == closingChar:
+            numOpennedChars -= 1
+        
+        index+=1
+
+        if numOpennedChars == 0:
+            return index
+
+        
+
+    
+    raise SyntaxError("Invalid string closed character or it does not exist")
+
+        
+def extractTokens(rawText):
+    tokens = []
+    index = 0
+    while index <= len(rawText)-1:
+        char = rawText[index]
+        
+        if char in ['{', "["]:
+            lastIndex = lookForLastIndexOfNestableToken(rawText, index)
+            tokens.append(rawText[index:lastIndex])
+            index = lastIndex
+        elif char in ['"']:
+            lastIndex = lookForLastIndexOfString(rawText, index)
+            tokens.append(rawText[index:lastIndex])
+            index = lastIndex - 1
+        elif char in [":"]:
+            tokens.append(char)
+        elif char in specialWords.keys():
+            specialWord = specialWords[char]
+            stimatedEndIndex = index+len(specialWord)
+            if not(specialWord == rawText[index:stimatedEndIndex]):
+                raise SyntaxError(f"Invalid Special Word in char with index {index}")
+
+            tokens.append(specialWord)
+            index = stimatedEndIndex
+
+        elif number := re.search(r"^-?\d+(\.\d+)?", rawText[index:]):
+            stringNumber = number.group()
+            tokens.append(stringNumber)
+            index += len(stringNumber)
+
+        index+=1
 
 
+    return tokens
+
+def mapDictionaryFromTokens(tokens):
+    dictionary = {}
+    index = 0
+    lastIndex = len(tokens) - 1
+    while index <= lastIndex:
+        token = tokens[index]
+        if token == ":":
+            key = tokens[index - 1]
+            value = tokens[index + 1]
+            dictionary[parseType(key)] = parseType(value)
+
+        index+=1 
+
+    return dictionary
+
+def parseType(text):
+    if text[0] == '"' and text[len(text)-1] == '"':
+        return text[1:-1]
+    
+    if text in specialWordsCovertionTable.keys():
+        return specialWordsCovertionTable[text]
+    
+    if number := re.search(r"^-?\d+(\.\d+)?", text):
+        number = number.group()
+        return float(number)  if '.' in number  else int(number)
+
+    if text[0] == "[" and text[len(text)-1] == ']':
+        text = text[1:-1]
+        arrayTokens = extractTokens(text)
+        return list(map(lambda d: parseType(d), arrayTokens))
+
+    if text[0] == "{" and text[len(text)-1] == '}':
+        return converTojsonFromText(text)
+         
+
+    return text
+
+def converTojsonFromText(rawText):
   
+    return mapDictionaryFromTokens(extractTokens(rawText[1:-1]))
      
 
 
