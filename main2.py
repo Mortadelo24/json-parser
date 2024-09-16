@@ -1,14 +1,46 @@
 import argparse 
 import re
+from enum import Enum
 
-# fail2 completed
+# fail10 completed
+def mapString(text):
+    # if match := re.fullmatch('".+"',text, re.DOTALL):
+    #     return match.group()[1:-1]
+    text = text.strip()
+    newString = ''
+    index = 1
+    while index < len(text):
+        char = text[index]
 
-def mapObjectKeys(text):
+        newString += char
+        if char == '"' and not text[index-1] == "\\" :
+            break
+        
+        index +=1 
+
+    if not (text[0] == '"' and newString[-1] == '"' ):
+        raise SyntaxError(f'There is no valid string >{text}<')
+    
+    return newString[0:-1]
+
+def mapValue(text):
+    return []
+
+def mapObjectItems(text):
     dictionary = {}
-    keysValuePairs = map(lambda s: s.strip(), text.split(","))
+    keyValuePairs = map(lambda s: s.strip(), text.split(","))
+    
+    for keyValue in keyValuePairs:
+        try:
+            key, value = keyValue.split(":")
+        except:
+            raise SyntaxError("Invalid key value pair")
+        
+        dictionary[mapString(key)] = value
+        
+        
 
-
-    return list(keysValuePairs)
+    return dictionary
     
 
 def mapArrayItems(text):
@@ -17,10 +49,10 @@ def mapArrayItems(text):
 
     for item in stringItems:
         if item == "":
-            raise SyntaxError("Extra comma")
+            raise SyntaxError(f"Extra comma [{text}]")
         
-
         array.append(item)
+        
 
     return array
     
@@ -55,16 +87,18 @@ def lookForObject(text):
 
         index+=1
 
+    if len(text[index+1:].strip()) > 0:
+        raise SyntaxError(f"Unknown token in object mapping > {text[index+1:]} <")
+
     if numOpennedObjects > 0 or not isThereAnObject:
         raise SyntaxError("There is no valid object or array")
 
-    return {'{': mapObjectKeys, '[': mapArrayItems}[openningChar](text[openningIndex+1:closingIndex])
+    return {'{': mapObjectItems, '[': mapArrayItems}[openningChar](text[openningIndex+1:closingIndex])
 
 
 def converJsonTextToDictionary(text):
 
         
-
     return lookForObject(text)
 
 
@@ -82,7 +116,7 @@ def main():
     data = converJsonTextToDictionary(jsonFile.read())
 
 
-    print("Parsed dictionary:", data, sep="\n")
+    print("Parsed json File:", data, sep="\n")
 
 
     jsonFile.close()

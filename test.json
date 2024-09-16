@@ -1,18 +1,9 @@
 {
-    "key1": true,
-    "key2": false,
-    "key3": null,
-    "key78": [2, "a", {"a": null}],
-    "key4": "value\n",
-    "key5": 101.2,
-    "nido": {
-        "nido2": null,
-        "nido4": {
-            "ddd": []
-        },
-        "aaaa2": {}
-    },
-    "peru": {
+    
+ 
 
-    }
+
+
+
+
 }
